@@ -219,7 +219,9 @@ def _import_archives_action(files: list[Any] | None, output_root: str = "outputs
                             writer.writerow(row + [zip_path.stem])
                             appended += 1
 
-    merged_zip = shutil.make_archive(str(merged_data), "zip", merged_data)
+    # Tạo file zip từ thư mục merged_data
+    zip_base_name = merged_root / "merged_output"
+    merged_zip = shutil.make_archive(str(zip_base_name), "zip", merged_data)
     status = f"Đã gộp {extracted} ZIP, metadata_all.csv có thêm {appended} dòng. Tải merged.zip."
     return status, merged_zip
 
@@ -328,7 +330,9 @@ def _split_segments_action(
                     ]
                 )
 
-        archive = shutil.make_archive(str(output_dir), "zip", output_dir)
+        # Tạo file zip từ thư mục output_dir
+        zip_base_name = tmp_root / "segments_output"
+        archive = shutil.make_archive(str(zip_base_name), "zip", output_dir)
         return f"Tách {len(segments_state)} đoạn thành công. Tải zip bên dưới.", archive
     except Exception as exc:  # pragma: no cover
         return f"Lỗi khi tách: {exc}", None
@@ -398,7 +402,7 @@ def build_interface() -> gr.Blocks:
         selection_info = gr.Textbox(label="Hàng đang chọn", interactive=False, value="Chưa chọn hàng")
         split_btn = gr.Button("Tách và tải")
         split_status = gr.Textbox(label="Trạng thái tách", lines=2)
-        zip_file = gr.File(label="Tải ZIP các đoạn")
+        split_zip_file = gr.File(label="Tải ZIP các đoạn đã tách")
 
         gr.Markdown(
             """
@@ -409,6 +413,7 @@ def build_interface() -> gr.Blocks:
         import_files = gr.File(label="Chọn nhiều ZIP", file_count="multiple", file_types=[".zip"])
         import_btn = gr.Button("Nhập ZIP vào thư mục chung")
         import_status = gr.Textbox(label="Trạng thái nhập ZIP", lines=2)
+        merged_zip_file = gr.File(label="Tải ZIP đã gộp")
 
         result_box = gr.Textbox(label="Bảng phân đoạn", lines=12)
         rttm_file = gr.File(label="Tải RTTM")
@@ -444,12 +449,12 @@ def build_interface() -> gr.Blocks:
         split_btn.click(
             fn=_split_segments_action,
             inputs=[segment_df, segments_state, audio_state],
-            outputs=[split_status, zip_file],
+            outputs=[split_status, split_zip_file],
         )
         import_btn.click(
             fn=_import_archives_action,
             inputs=[import_files],
-            outputs=[import_status, zip_file],
+            outputs=[import_status, merged_zip_file],
         )
     return demo
 

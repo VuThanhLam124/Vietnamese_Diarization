@@ -1,1 +1,0 @@
-/home/ubuntu/DataScience/Voice_Pro_filing/crawled_audio/
