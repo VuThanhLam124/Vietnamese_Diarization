@@ -101,6 +101,14 @@ def _diarize_action(
         ]
         # Đảm bảo prepared_path là file path hợp lệ, không phải None hoặc directory
         audio_file_output = str(prepared_path) if prepared_path and Path(prepared_path).is_file() else None
+        
+        # Debug logging
+        import sys
+        print(f"DEBUG: prepared_path={prepared_path}, type={type(prepared_path)}", file=sys.stderr)
+        print(f"DEBUG: rttm_path={rttm_path}, exists={Path(rttm_path).exists()}", file=sys.stderr)
+        print(f"DEBUG: json_path={json_path}, exists={Path(json_path).exists()}", file=sys.stderr)
+        print(f"DEBUG: audio_file_output={audio_file_output}", file=sys.stderr)
+        
         return (
             table,
             str(rttm_path),
