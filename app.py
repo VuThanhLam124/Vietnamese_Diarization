@@ -55,7 +55,7 @@ def _diarize_action(
     url: str | None = None,
 ):
     if not audio_path and not url:
-        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], {}
+        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], {}, None
     try:
         downloaded_path = None
         download_tmp = None
@@ -98,9 +98,17 @@ def _diarize_action(
             "source_stem": source_name,
             "download_tmp": str(download_tmp) if download_tmp else None,
         }
-        return table, str(rttm_path), str(json_path), df_rows, dict_segments, audio_state
+        return (
+            table,
+            str(rttm_path),
+            str(json_path),
+            df_rows,
+            dict_segments,
+            audio_state,
+            str(prepared_path),
+        )
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
-        return f"Lỗi: {exc}", None, None, [], [], {}
+        return f"Lỗi: {exc}", None, None, [], [], {}, None
 
 
 def _normalize_label(value: Any) -> str:
@@ -383,6 +391,7 @@ def build_interface() -> gr.Blocks:
         split_btn = gr.Button("Tách và tải")
         split_status = gr.Textbox(label="Trạng thái tách", lines=2)
         zip_file = gr.File(label="Tải ZIP các đoạn")
+        playback = gr.Audio(label="Nghe audio đã tải/chuyển đổi", type="filepath", interactive=False)
 
         gr.Markdown(
             """
@@ -403,7 +412,7 @@ def build_interface() -> gr.Blocks:
         run_btn.click(
             fn=_diarize_action,
             inputs=[audio_input, token_input, device_input, url_input],
-            outputs=[result_box, rttm_file, json_file, segment_df, segments_state, audio_state],
+            outputs=[result_box, rttm_file, json_file, segment_df, segments_state, audio_state, playback],
         )
         segment_df.select(
             fn=_select_row_action,

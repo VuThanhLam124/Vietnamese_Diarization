@@ -107,12 +107,16 @@ def convert_to_wav_16k(audio_path: Path) -> Tuple[Path, Path | None]:
     Chuyển audio về WAV mono 16 kHz bằng ffmpeg.
     Trả về (đường dẫn dùng để suy luận, thư mục tạm để dọn dẹp hoặc None nếu không cần).
     """
-    if not shutil.which("ffmpeg"):
-        return audio_path, None
-
+    safe_stem = audio_path.stem.replace(" ", "_")
     tmpdir = Path(tempfile.mkdtemp(prefix="diarization_audio_"))
-    output = tmpdir / f"{audio_path.stem}_16k.wav"
 
+    if not shutil.which("ffmpeg"):
+        # Sao chép tệp hiện có vào thư mục tạm với tên không dấu cách
+        output = tmpdir / audio_path.name.replace(" ", "_")
+        shutil.copy2(audio_path, output)
+        return output, tmpdir
+
+    output = tmpdir / f"{safe_stem}_16k.wav"
     cmd = [
         "ffmpeg",
         "-y",
