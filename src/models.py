@@ -31,11 +31,47 @@ class DiarizationEngine:
         segmentation_params: Optional[Dict[str, float]] = None,
         clustering_params: Optional[Dict[str, float]] = None,
     ) -> None:
+        import sys
         self.device = self._resolve_device(device)
         auth_token = read_hf_token(token, key_path)
         
-        # pyannote.audio 3.1.x uses 'use_auth_token' parameter
-        pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
+        # Handle model config with deprecated parameters
+        try:
+            pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
+        except TypeError as e:
+            if "plda" in str(e):
+                print(f"WARNING: Model config contains deprecated 'plda' parameter. Loading with workaround...", file=sys.stderr)
+                # Download and patch config
+                from huggingface_hub import hf_hub_download
+                import yaml
+                import tempfile
+                from pathlib import Path
+                
+                # Download original config
+                config_path = hf_hub_download(repo_id=model_id, filename="config.yaml", token=auth_token)
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                
+                # Remove deprecated params
+                if 'params' in config:
+                    deprecated_keys = ['plda']
+                    for key in deprecated_keys:
+                        if key in config['params']:
+                            print(f"  Removing deprecated parameter: {key}", file=sys.stderr)
+                            del config['params'][key]
+                
+                # Save patched config to temp file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
+                    yaml.dump(config, tmp)
+                    tmp_path = tmp.name
+                
+                try:
+                    # Load pipeline from patched config
+                    pipeline = Pipeline.from_pretrained(tmp_path, use_auth_token=auth_token)
+                finally:
+                    Path(tmp_path).unlink(missing_ok=True)
+            else:
+                raise
         
         params = pipeline.parameters()
         # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.
