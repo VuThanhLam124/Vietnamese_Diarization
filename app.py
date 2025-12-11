@@ -455,4 +455,9 @@ def build_interface() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    build_interface().launch(server_name="0.0.0.0", server_port=7860)
+    build_interface().launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=True,
+        show_api=False,
+    )
