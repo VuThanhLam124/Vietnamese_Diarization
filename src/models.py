@@ -44,32 +44,28 @@ class DiarizationEngine:
                 # Download and patch config
                 from huggingface_hub import hf_hub_download
                 import yaml
-                import tempfile
-                from pathlib import Path
+                from pyannote.audio.pipelines import SpeakerDiarization
                 
                 # Download original config
                 config_path = hf_hub_download(repo_id=model_id, filename="config.yaml", token=auth_token)
                 with open(config_path, 'r') as f:
                     config = yaml.safe_load(f)
                 
-                # Remove deprecated params
+                # Get pipeline class
+                pipeline_class = SpeakerDiarization
+                
+                # Remove deprecated params from config
                 if 'params' in config:
                     deprecated_keys = ['plda']
                     for key in deprecated_keys:
                         if key in config['params']:
                             print(f"  Removing deprecated parameter: {key}", file=sys.stderr)
                             del config['params'][key]
-                
-                # Save patched config to temp file
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp:
-                    yaml.dump(config, tmp)
-                    tmp_path = tmp.name
-                
-                try:
-                    # Load pipeline from patched config
-                    pipeline = Pipeline.from_pretrained(tmp_path, use_auth_token=auth_token)
-                finally:
-                    Path(tmp_path).unlink(missing_ok=True)
+                    
+                    # Instantiate pipeline directly with cleaned params
+                    pipeline = pipeline_class(**config['params'], use_auth_token=auth_token)
+                else:
+                    raise ValueError("Invalid config structure")
             else:
                 raise
         
