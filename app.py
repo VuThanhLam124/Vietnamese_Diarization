@@ -383,7 +383,7 @@ def build_interface() -> gr.Blocks:
 - Nhấn "Tách và tải" để tải zip gồm các đoạn WAV và metadata.csv (không lưu lại trên server).
 """
         )
-        segment_df = gr.DataFrame(
+        segment_df = gr.Dataframe(
             headers=[
                 "start_mmss",
                 "end_mmss",
@@ -392,10 +392,8 @@ def build_interface() -> gr.Blocks:
                 "region",
                 "transcription",
             ],
-            datatype="str",
+            datatype=["str", "str", "str", "str", "str", "str"],
             interactive=True,
-            col_count=(6, "fixed"),
-            row_count=(0, "dynamic"),
         )
         gender_dropdown = gr.Dropdown(choices=["", "nam", "nữ"], value="", label="Giới tính chọn nhanh")
         region_dropdown = gr.Dropdown(choices=["", "bắc", "trung", "nam"], value="", label="Vùng miền chọn nhanh")
