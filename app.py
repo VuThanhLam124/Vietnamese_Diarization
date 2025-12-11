@@ -451,12 +451,23 @@ def build_interface() -> gr.Blocks:
             inputs=[import_files],
             outputs=[import_status, zip_file],
         )
-        demo.get_api_info = lambda *args, **kwargs: {}
     return demo
 
 
 if __name__ == "__main__":
-    build_interface().launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-    )
+    import sys
+    print("=" * 60, file=sys.stderr)
+    print("Khởi tạo Vietnamese Diarization App...", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    try:
+        demo = build_interface()
+        print("Interface đã được khởi tạo thành công!", file=sys.stderr)
+        demo.launch(
+            server_name="0.0.0.0",
+            server_port=7860,
+        )
+    except Exception as e:
+        print(f"LỖI khi khởi động app: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
