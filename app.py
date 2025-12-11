@@ -392,8 +392,9 @@ def build_interface() -> gr.Blocks:
                 "region",
                 "transcription",
             ],
-            datatype=["str", "str", "str", "str", "str", "str"],
+            datatype="str",
             interactive=True,
+            col_count=(6, "fixed"),
             row_count=(0, "dynamic"),
         )
         gender_dropdown = gr.Dropdown(choices=["", "nam", "nữ"], value="", label="Giới tính chọn nhanh")
