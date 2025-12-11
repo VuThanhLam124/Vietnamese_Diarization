@@ -55,7 +55,7 @@ def _diarize_action(
     url: str | None = None,
 ):
     if not audio_path and not url:
-        empty_state = {"prepared": "", "tmpdir": "", "source_stem": "", "download_tmp": ""}
+        empty_state = ["", "", "", ""]
         return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], empty_state, ""
     try:
         downloaded_path = None
@@ -93,12 +93,12 @@ def _diarize_action(
         ]
 
         source_name = Path(audio_input).stem if audio_input else "unknown"
-        audio_state = {
-            "prepared": str(prepared_path),
-            "tmpdir": str(prep_tmpdir) if prep_tmpdir else "",
-            "source_stem": source_name,
-            "download_tmp": str(download_tmp) if download_tmp else "",
-        }
+        audio_state = [
+            str(prepared_path),
+            str(prep_tmpdir) if prep_tmpdir else "",
+            source_name,
+            str(download_tmp) if download_tmp else "",
+        ]
         return (
             table,
             str(rttm_path),
@@ -109,7 +109,7 @@ def _diarize_action(
             str(prepared_path),
         )
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
-        empty_state = {"prepared": "", "tmpdir": "", "source_stem": "", "download_tmp": ""}
+        empty_state = ["", "", "", ""]
         return f"Lỗi: {exc}", None, None, [], [], empty_state, ""
 
 
@@ -227,16 +227,16 @@ def _import_archives_action(files: list[Any] | None, output_root: str = "outputs
 def _split_segments_action(
     table_rows: list[list[Any]] | None,
     segments_state: list[dict],
-    audio_state: dict,
+    audio_state: list[str],
 ):
     if not shutil.which("ffmpeg"):
         return "Cần cài ffmpeg để tách đoạn.", None
     if not segments_state:
         return "Chạy diarization trước.", None
-    if not audio_state or not audio_state.get("prepared"):
+    if not audio_state or len(audio_state) < 1 or not audio_state[0]:
         return "Thiếu thông tin file đã chuẩn hóa.", None
 
-    prepared_path = Path(audio_state["prepared"])
+    prepared_path = Path(audio_state[0])
     tmp_root = Path(tempfile.mkdtemp(prefix="segments_"))
     output_dir = tmp_root / "data"
     output_dir.mkdir(parents=True, exist_ok=True)
