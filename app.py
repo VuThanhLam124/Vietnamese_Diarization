@@ -55,7 +55,8 @@ def _diarize_action(
     url: str | None = None,
 ):
     if not audio_path and not url:
-        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], {}, None
+        empty_state = {"prepared": "", "tmpdir": "", "source_stem": "", "download_tmp": ""}
+        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], empty_state, ""
     try:
         downloaded_path = None
         download_tmp = None
@@ -94,9 +95,9 @@ def _diarize_action(
         source_name = Path(audio_input).stem if audio_input else "unknown"
         audio_state = {
             "prepared": str(prepared_path),
-            "tmpdir": str(prep_tmpdir) if prep_tmpdir else None,
+            "tmpdir": str(prep_tmpdir) if prep_tmpdir else "",
             "source_stem": source_name,
-            "download_tmp": str(download_tmp) if download_tmp else None,
+            "download_tmp": str(download_tmp) if download_tmp else "",
         }
         return (
             table,
@@ -108,7 +109,8 @@ def _diarize_action(
             str(prepared_path),
         )
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
-        return f"Lỗi: {exc}", None, None, [], [], {}, None
+        empty_state = {"prepared": "", "tmpdir": "", "source_stem": "", "download_tmp": ""}
+        return f"Lỗi: {exc}", None, None, [], [], empty_state, ""
 
 
 def _normalize_label(value: Any) -> str:
