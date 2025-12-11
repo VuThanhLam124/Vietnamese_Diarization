@@ -1,3 +1,14 @@
+---
+title: Diarization Labeling
+emoji: "\U0001F4E3"
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: "4.39.0"
+app_file: app.py
+pinned: false
+---
+
 # Vietnamese_Diarization
 
 Kho mã mẫu diarization tiếng Việt dùng pyannote/speaker-diarization-community-1.
@@ -9,8 +20,14 @@ Kho mã mẫu diarization tiếng Việt dùng pyannote/speaker-diarization-comm
 - Hugging Face access token (dán vào hugging_face_key.txt hoặc đặt biến môi trường HUGGINGFACE_TOKEN/HUGGINGFACE_ACCESS_TOKEN)
 
 ## Cài đặt nhanh
-- Cài thư viện: `pip install pyannote.audio` hoặc `uv add pyannote.audio`
+- Cài thư viện: `pip install pyannote.audio gradio yt-dlp` hoặc `uv add pyannote.audio gradio yt-dlp`
 - Đảm bảo ffmpeg đã có trong PATH
+
+## Chạy Gradio
+- Lệnh: `python app.py`
+- Trình duyệt mở tại http://localhost:7860 (hoặc địa chỉ máy chủ nếu chạy từ xa)
+- Điền token nếu chưa đặt sẵn, tải file âm thanh hoặc dán URL YouTube/TikTok, chọn thiết bị rồi nhấn Chạy
+- Bảng kết quả hiển thị dạng phút:giây; có thể gán nhãn giới tính (nam/nữ), vùng miền (bắc/trung/nam) và transcription, sau đó bấm "Tách và tải" để nhận zip gồm các đoạn WAV và metadata.csv
 
 ## Chạy mẫu
 - Diarization và in kết quả: `python infer.py path/to/audio.wav`
@@ -25,7 +42,7 @@ segments = diarize_file("audio.wav", device="auto")
 ```
 
 ## Cấu trúc
-- app.py: API Python đơn giản
+- app.py: API Python và giao diện Gradio
 - infer.py: CLI chạy diarization
 - src/models.py: Bao gói pipeline pyannote
 - src/utils.py: Hỗ trợ đọc token, định dạng kết quả

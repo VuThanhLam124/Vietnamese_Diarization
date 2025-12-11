@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Any, Dict, Optional
+import shutil
 
 import torch
 from pyannote.audio import Pipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
 
-from .utils import ensure_audio_path, read_hf_token
+from .utils import ensure_audio_path, read_hf_token, convert_to_wav_16k
 
 
 @dataclass
@@ -27,10 +28,27 @@ class DiarizationEngine:
         token: str | None = None,
         key_path: str | Path = "hugging_face_key.txt",
         device: str = "auto",
+        segmentation_params: Optional[Dict[str, float]] = None,
+        clustering_params: Optional[Dict[str, float]] = None,
     ) -> None:
         self.device = self._resolve_device(device)
         auth_token = read_hf_token(token, key_path)
-        self.pipeline = Pipeline.from_pretrained(model_id, token=auth_token)
+        pipeline = Pipeline.from_pretrained(model_id, token=auth_token)
+        params = pipeline.parameters()
+        # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.
+        seg_cfg = params.get("segmentation")
+        if seg_cfg:
+            default_seg = {"min_duration_on": 1.0, "min_duration_off": 0.8}
+            for k, v in default_seg.items():
+                if k in seg_cfg:
+                    seg_cfg[k] = v
+            if segmentation_params:
+                for k, v in segmentation_params.items():
+                    if k in seg_cfg:
+                        seg_cfg[k] = v
+        if clustering_params and "clustering" in params:
+            params["clustering"].update(clustering_params)
+        self.pipeline = pipeline.instantiate(params)
         self.pipeline.to(self.device)
 
     @staticmethod
@@ -45,17 +63,37 @@ class DiarizationEngine:
             return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         raise ValueError("Giá trị device hợp lệ: auto, cpu, cuda.")
 
-    def diarize(self, audio_path: str | Path, show_progress: bool = True):
+    def diarize(
+        self, audio_path: str | Path, show_progress: bool = True, keep_audio: bool = False
+    ):
         audio_path = ensure_audio_path(audio_path)
-        if show_progress:
-            with ProgressHook() as hook:
-                return self.pipeline(str(audio_path), hook=hook)
-        return self.pipeline(str(audio_path))
+        prepared_path, tmpdir = convert_to_wav_16k(audio_path)
+        try:
+            if show_progress:
+                with ProgressHook() as hook:
+                    result = self.pipeline(str(prepared_path), hook=hook)
+            else:
+                result = self.pipeline(str(prepared_path))
+            if keep_audio:
+                return result, prepared_path, tmpdir
+            return result
+        finally:
+            if tmpdir and not keep_audio:
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     @staticmethod
-    def to_segments(diarization) -> List[Segment]:
+    def _get_annotation(diarization: Any):
+        """Hỗ trợ cả dạng trả về cũ (Annotation) và mới (có speaker_diarization)."""
+        if hasattr(diarization, "itertracks"):
+            return diarization
+        if hasattr(diarization, "speaker_diarization"):
+            return diarization.speaker_diarization
+        raise TypeError("Output pipeline không có Annotation hoặc speaker_diarization.")
+
+    def to_segments(self, diarization: Any) -> List[Segment]:
+        annotation = self._get_annotation(diarization)
         segments: List[Segment] = []
-        for segment, _, speaker in diarization.itertracks(yield_label=True):
+        for segment, _, speaker in annotation.itertracks(yield_label=True):
             segments.append(
                 Segment(
                     start=float(segment.start),
@@ -65,11 +103,12 @@ class DiarizationEngine:
             )
         return segments
 
-    @staticmethod
-    def save_rttm(diarization, output_path: str | Path) -> Path:
+    def save_rttm(self, diarization: Any, output_path: str | Path) -> Path:
+        annotation = self._get_annotation(diarization)
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        diarization.write_rttm(path)
+        with path.open("w", encoding="utf-8") as f:
+            annotation.write_rttm(f)
         return path
 
     def run(self, audio_path: str | Path, show_progress: bool = True) -> List[Segment]:
