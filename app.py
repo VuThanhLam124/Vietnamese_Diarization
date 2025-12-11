@@ -335,7 +335,7 @@ def _split_segments_action(
 
 
 def build_interface() -> gr.Blocks:
-    with gr.Blocks(title="Vietnamese Diarization") as demo:
+    with gr.Blocks(title="Vietnamese Diarization", analytics_enabled=False, api_mode="none") as demo:
         gr.Markdown(
             """
 ### Diarization tiếng Việt với pyannote
