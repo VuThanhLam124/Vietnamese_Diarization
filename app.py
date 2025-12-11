@@ -335,7 +335,7 @@ def _split_segments_action(
 
 
 def build_interface() -> gr.Blocks:
-    with gr.Blocks(title="Vietnamese Diarization", analytics_enabled=False, api_mode="none") as demo:
+    with gr.Blocks(title="Vietnamese Diarization", analytics_enabled=False) as demo:
         gr.Markdown(
             """
 ### Diarization tiếng Việt với pyannote
@@ -451,6 +451,7 @@ def build_interface() -> gr.Blocks:
             inputs=[import_files],
             outputs=[import_status, zip_file],
         )
+        demo.get_api_info = lambda *args, **kwargs: {}
     return demo
 
 
