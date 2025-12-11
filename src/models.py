@@ -49,22 +49,29 @@ class DiarizationEngine:
                 f"After accepting, add HF_TOKEN to Space secrets with your token."
             )
         
-        params = pipeline.parameters()
-        # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.
-        seg_cfg = params.get("segmentation")
-        if seg_cfg:
-            default_seg = {"min_duration_on": 1.0, "min_duration_off": 0.8}
-            for k, v in default_seg.items():
-                if k in seg_cfg:
-                    seg_cfg[k] = v
-            if segmentation_params:
-                for k, v in segmentation_params.items():
-                    if k in seg_cfg:
-                        seg_cfg[k] = v
-        if clustering_params and "clustering" in params:
+        # Get default parameters and customize if needed
+        try:
+            params = pipeline.default_parameters()
+        except NotImplementedError:
+            # If no default parameters, try to instantiate without params
+            params = {}
+        
+        print(f"DEBUG: Pipeline params: {params}", file=sys.stderr)
+        
+        # Update segmentation params if available
+        if "segmentation" in params and segmentation_params:
+            params["segmentation"].update(segmentation_params)
+        if "clustering" in params and clustering_params:
             params["clustering"].update(clustering_params)
-        self.pipeline = pipeline.instantiate(params)
+        
+        # Instantiate pipeline with parameters
+        print(f"DEBUG: Instantiating pipeline...", file=sys.stderr)
+        instantiated = pipeline.instantiate(params) if params else pipeline
+        print(f"DEBUG: Pipeline instantiated: {type(instantiated)}", file=sys.stderr)
+        
+        self.pipeline = instantiated
         self.pipeline.to(self.device)
+        print(f"DEBUG: Pipeline moved to device: {self.device}", file=sys.stderr)
 
     @staticmethod
     def _resolve_device(device: str) -> torch.device:
