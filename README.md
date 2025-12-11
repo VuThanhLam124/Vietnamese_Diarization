@@ -1,3 +1,14 @@
+---
+title: Diarization Labeling
+emoji: "\U0001F4E3"
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: "4.39.0"
+app_file: app.py
+pinned: false
+---
+
 # Vietnamese_Diarization
 
 Kho mã mẫu diarization tiếng Việt dùng pyannote/speaker-diarization-community-1.
