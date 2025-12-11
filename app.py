@@ -384,16 +384,11 @@ def build_interface() -> gr.Blocks:
 """
         )
         segment_df = gr.Dataframe(
-            headers=[
-                "start_mmss",
-                "end_mmss",
-                "speaker",
-                "gender",
-                "region",
-                "transcription",
-            ],
+            value=[],
+            headers=["start_mmss", "end_mmss", "speaker", "gender", "region", "transcription"],
             datatype=["str", "str", "str", "str", "str", "str"],
             interactive=True,
+            type="array",
         )
         gender_dropdown = gr.Dropdown(choices=["", "nam", "nữ"], value="", label="Giới tính chọn nhanh")
         region_dropdown = gr.Dropdown(choices=["", "bắc", "trung", "nam"], value="", label="Vùng miền chọn nhanh")
@@ -460,21 +455,15 @@ def build_interface() -> gr.Blocks:
 
 if __name__ == "__main__":
     import sys
-    import os
     print("=" * 60, file=sys.stderr)
     print("Khởi tạo Vietnamese Diarization App...", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     try:
         demo = build_interface()
         print("Interface đã được khởi tạo thành công!", file=sys.stderr)
-        
-        # Kiểm tra nếu đang chạy trên Hugging Face Space
-        is_hf_space = os.getenv("SPACE_ID") is not None
-        
         demo.launch(
             server_name="0.0.0.0",
             server_port=7860,
-            share=is_hf_space,  # Tự động share nếu chạy trên HF Space
         )
     except Exception as e:
         print(f"LỖI khi khởi động app: {e}", file=sys.stderr)
