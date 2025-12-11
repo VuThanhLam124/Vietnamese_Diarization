@@ -13,6 +13,7 @@ def read_hf_token(token: str | None = None, key_path: str | Path = "hugging_face
     """Ưu tiên token truyền vào, nếu không thì đọc từ biến môi trường hoặc file."""
     candidates = [
         token,
+        os.getenv("HF_TOKEN"),  # HF Spaces standard secret name
         os.getenv("HUGGINGFACE_TOKEN"),
         os.getenv("HUGGINGFACE_ACCESS_TOKEN"),
     ]
@@ -165,7 +166,15 @@ def download_audio_from_url(url: str) -> Tuple[Path, Path]:
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"Tải audio thất bại: {result.stderr.strip()}")
+        stderr = result.stderr.strip()
+        # Check if it's a network error
+        if "Failed to resolve" in stderr or "No address associated with hostname" in stderr:
+            raise RuntimeError(
+                "Không thể kết nối internet để tải video. "
+                "Hugging Face Spaces (free tier) không hỗ trợ download từ URL. "
+                "Vui lòng tải file audio trực tiếp thay vì dùng URL."
+            )
+        raise RuntimeError(f"Tải audio thất bại: {stderr}")
 
     wav_files = list(tmpdir.glob("*.wav"))
     if not wav_files:

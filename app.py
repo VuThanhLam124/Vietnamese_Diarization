@@ -384,6 +384,7 @@ def build_interface() -> gr.Blocks:
                 url_input = gr.Textbox(
                     label="URL YouTube/TikTok (tùy chọn)",
                     placeholder="Dán link video nếu không tải file",
+                    info="⚠️ Lưu ý: URL download không hoạt động trên HF Spaces (free tier). Vui lòng tải file trực tiếp.",
                 )
                 token_input = gr.Textbox(
                     label="Hugging Face access token (tùy chọn)",
