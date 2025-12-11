@@ -24,7 +24,7 @@ class DiarizationEngine:
 
     def __init__(
         self,
-        model_id: str = "pyannote/speaker-diarization-community-1",
+        model_id: str = "pyannote/speaker-diarization",
         token: str | None = None,
         key_path: str | Path = "hugging_face_key.txt",
         device: str = "auto",
@@ -35,39 +35,8 @@ class DiarizationEngine:
         self.device = self._resolve_device(device)
         auth_token = read_hf_token(token, key_path)
         
-        # Handle model config with deprecated parameters
-        try:
-            pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
-        except TypeError as e:
-            if "plda" in str(e):
-                print(f"WARNING: Model config contains deprecated 'plda' parameter. Loading with workaround...", file=sys.stderr)
-                # Download and patch config
-                from huggingface_hub import hf_hub_download
-                import yaml
-                from pyannote.audio.pipelines import SpeakerDiarization
-                
-                # Download original config
-                config_path = hf_hub_download(repo_id=model_id, filename="config.yaml", token=auth_token)
-                with open(config_path, 'r') as f:
-                    config = yaml.safe_load(f)
-                
-                # Get pipeline class
-                pipeline_class = SpeakerDiarization
-                
-                # Remove deprecated params from config
-                if 'params' in config:
-                    deprecated_keys = ['plda']
-                    for key in deprecated_keys:
-                        if key in config['params']:
-                            print(f"  Removing deprecated parameter: {key}", file=sys.stderr)
-                            del config['params'][key]
-                    
-                    # Instantiate pipeline directly with cleaned params
-                    pipeline = pipeline_class(**config['params'], use_auth_token=auth_token)
-                else:
-                    raise ValueError("Invalid config structure")
-            else:
-                raise
+        # Load pipeline - pyannote/speaker-diarization (latest) works without deprecated params
+        pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
         
         params = pipeline.parameters()
         # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.
