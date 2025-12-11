@@ -42,8 +42,11 @@ class DiarizationEngine:
         if pipeline is None:
             raise RuntimeError(
                 f"Failed to load pipeline '{model_id}'. "
-                f"The model might be gated - visit https://hf.co/{model_id} to accept terms. "
-                f"Make sure you've added HF_TOKEN to Space secrets or provided valid token."
+                f"IMPORTANT: You need to accept terms for ALL these models:\n"
+                f"  1. https://hf.co/pyannote/speaker-diarization-3.1\n"
+                f"  2. https://hf.co/pyannote/segmentation-3.0\n"
+                f"  3. https://hf.co/pyannote/embedding\n"
+                f"After accepting, add HF_TOKEN to Space secrets with your token."
             )
         
         params = pipeline.parameters()
