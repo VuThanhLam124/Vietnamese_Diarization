@@ -346,7 +346,13 @@ def build_interface() -> gr.Blocks:
         audio_state = gr.State({})
 
         with gr.Row():
-            audio_input = gr.Audio(label="Tải file audio", type="filepath")
+            with gr.Column():
+                audio_input = gr.Audio(label="Tải file audio (tùy chọn)", type="filepath")
+                playback = gr.Audio(
+                    label="Audio đã chuyển đổi/đang dùng",
+                    type="filepath",
+                    interactive=False,
+                )
             with gr.Column():
                 url_input = gr.Textbox(
                     label="URL YouTube/TikTok (tùy chọn)",
@@ -391,7 +397,6 @@ def build_interface() -> gr.Blocks:
         split_btn = gr.Button("Tách và tải")
         split_status = gr.Textbox(label="Trạng thái tách", lines=2)
         zip_file = gr.File(label="Tải ZIP các đoạn")
-        playback = gr.Audio(label="Nghe audio đã tải/chuyển đổi", type="filepath", interactive=False)
 
         gr.Markdown(
             """
