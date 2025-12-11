@@ -12,7 +12,12 @@ import zipfile
 import gradio as gr
 
 from src.models import DiarizationEngine, Segment
-from src.utils import export_segments_json, format_segments_table, seconds_to_mmss
+from src.utils import (
+    export_segments_json,
+    format_segments_table,
+    seconds_to_mmss,
+    download_audio_from_url,
+)
 
 DEFAULT_TOKEN_SENTINEL = "__FROM_FILE_OR_ENV__"
 GENDER_MAP = {"nam": "0", "male": "0", "nữ": "1", "nu": "1", "female": "1"}
@@ -43,13 +48,25 @@ def _get_engine(token_key: str, device: str) -> DiarizationEngine:
     return DiarizationEngine(token=token_value, device=device)
 
 
-def _diarize_action(audio_path: str | None, hf_token: str | None, device: str):
-    if not audio_path:
-        return "Vui lòng tải file âm thanh.", None, None, [], [], {}
+def _diarize_action(
+    audio_path: str | None,
+    hf_token: str | None,
+    device: str,
+    url: str | None = None,
+):
+    if not audio_path and not url:
+        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], {}
     try:
+        downloaded_path = None
+        download_tmp = None
+        audio_input = audio_path
+        if url:
+            downloaded_path, download_tmp = download_audio_from_url(url)
+            audio_input = str(downloaded_path)
+
         engine = _get_engine(_token_key(hf_token), device)
         diarization, prepared_path, prep_tmpdir = engine.diarize(
-            audio_path, show_progress=False, keep_audio=True
+            audio_input, show_progress=False, keep_audio=True
         )
         segments = engine.to_segments(diarization)
         dict_segments = [
@@ -74,10 +91,12 @@ def _diarize_action(audio_path: str | None, hf_token: str | None, device: str):
             for seg in dict_segments
         ]
 
+        source_name = Path(audio_input).stem if audio_input else "unknown"
         audio_state = {
             "prepared": str(prepared_path),
             "tmpdir": str(prep_tmpdir) if prep_tmpdir else None,
-            "source_stem": Path(audio_path).stem,
+            "source_stem": source_name,
+            "download_tmp": str(download_tmp) if download_tmp else None,
         }
         return table, str(rttm_path), str(json_path), df_rows, dict_segments, audio_state
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
@@ -321,6 +340,10 @@ def build_interface() -> gr.Blocks:
         with gr.Row():
             audio_input = gr.Audio(label="Tải file audio", type="filepath")
             with gr.Column():
+                url_input = gr.Textbox(
+                    label="URL YouTube/TikTok (tùy chọn)",
+                    placeholder="Dán link video nếu không tải file",
+                )
                 token_input = gr.Textbox(
                     label="Hugging Face access token (tùy chọn)",
                     type="password",
@@ -379,7 +402,7 @@ def build_interface() -> gr.Blocks:
 
         run_btn.click(
             fn=_diarize_action,
-            inputs=[audio_input, token_input, device_input],
+            inputs=[audio_input, token_input, device_input, url_input],
             outputs=[result_box, rttm_file, json_file, segment_df, segments_state, audio_state],
         )
         segment_df.select(

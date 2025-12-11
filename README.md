@@ -20,13 +20,13 @@ Kho mã mẫu diarization tiếng Việt dùng pyannote/speaker-diarization-comm
 - Hugging Face access token (dán vào hugging_face_key.txt hoặc đặt biến môi trường HUGGINGFACE_TOKEN/HUGGINGFACE_ACCESS_TOKEN)
 
 ## Cài đặt nhanh
-- Cài thư viện: `pip install pyannote.audio gradio` hoặc `uv add pyannote.audio gradio`
+- Cài thư viện: `pip install pyannote.audio gradio yt-dlp` hoặc `uv add pyannote.audio gradio yt-dlp`
 - Đảm bảo ffmpeg đã có trong PATH
 
 ## Chạy Gradio
 - Lệnh: `python app.py`
 - Trình duyệt mở tại http://localhost:7860 (hoặc địa chỉ máy chủ nếu chạy từ xa)
-- Điền token nếu chưa đặt sẵn, tải file âm thanh, chọn thiết bị rồi nhấn Chạy
+- Điền token nếu chưa đặt sẵn, tải file âm thanh hoặc dán URL YouTube/TikTok, chọn thiết bị rồi nhấn Chạy
 - Bảng kết quả hiển thị dạng phút:giây; có thể gán nhãn giới tính (nam/nữ), vùng miền (bắc/trung/nam) và transcription, sau đó bấm "Tách và tải" để nhận zip gồm các đoạn WAV và metadata.csv
 
 ## Chạy mẫu

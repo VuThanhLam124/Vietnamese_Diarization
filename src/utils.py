@@ -134,3 +134,36 @@ def convert_to_wav_16k(audio_path: Path) -> Tuple[Path, Path | None]:
     if not output.exists():
         raise RuntimeError("ffmpeg không tạo được file WAV.")
     return output, tmpdir
+
+
+def download_audio_from_url(url: str) -> Tuple[Path, Path]:
+    """
+    Tải audio từ YouTube/TikTok/... dùng yt-dlp, xuất WAV để xử lý tiếp.
+    Trả về (đường dẫn file wav, thư mục tạm chứa file).
+    """
+    if not shutil.which("yt-dlp"):
+        raise RuntimeError("Cần cài yt-dlp để tải liên kết (pip install yt-dlp).")
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("Cần cài ffmpeg để chuyển đổi audio.")
+
+    tmpdir = Path(tempfile.mkdtemp(prefix="download_media_"))
+    out_tmpl = tmpdir / "%(title)s.%(ext)s"
+    cmd = [
+        "yt-dlp",
+        "-x",
+        "--audio-format",
+        "wav",
+        "--audio-quality",
+        "0",
+        "-o",
+        str(out_tmpl),
+        url,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Tải audio thất bại: {result.stderr.strip()}")
+
+    wav_files = list(tmpdir.glob("*.wav"))
+    if not wav_files:
+        raise RuntimeError("Không tìm thấy file WAV sau khi tải.")
+    return wav_files[0], tmpdir

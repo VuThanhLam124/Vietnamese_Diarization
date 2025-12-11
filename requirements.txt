@@ -1,3 +1,4 @@
 pyannote.audio
 torch
 gradio
+yt-dlp
