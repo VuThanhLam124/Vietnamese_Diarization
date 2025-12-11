@@ -99,6 +99,8 @@ def _diarize_action(
             source_name,
             str(download_tmp) if download_tmp else "",
         ]
+        # Đảm bảo prepared_path là file path hợp lệ, không phải None hoặc directory
+        audio_file_output = str(prepared_path) if prepared_path and Path(prepared_path).is_file() else None
         return (
             table,
             str(rttm_path),
@@ -106,7 +108,7 @@ def _diarize_action(
             df_rows,
             dict_segments,
             audio_state,
-            str(prepared_path),
+            audio_file_output,
         )
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
         empty_state = ["", "", "", ""]
