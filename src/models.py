@@ -34,12 +34,8 @@ class DiarizationEngine:
         self.device = self._resolve_device(device)
         auth_token = read_hf_token(token, key_path)
         
-        # Try newer 'token' parameter first, fallback to legacy 'use_auth_token'
-        try:
-            pipeline = Pipeline.from_pretrained(model_id, token=auth_token)
-        except TypeError:
-            # Older pyannote.audio versions use 'use_auth_token'
-            pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
+        # pyannote.audio 3.1.x uses 'use_auth_token' parameter
+        pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
         
         params = pipeline.parameters()
         # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.
