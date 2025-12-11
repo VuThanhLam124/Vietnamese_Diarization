@@ -54,21 +54,29 @@ def _diarize_action(
     device: str,
     url: str | None = None,
 ):
+    import sys
+    print(f"DEBUG START: audio_path={audio_path}, url={url}", file=sys.stderr)
+    
     if not audio_path and not url:
         empty_state = ["", "", "", ""]
-        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], empty_state, ""
+        return "Vui lòng tải file âm thanh hoặc nhập URL.", None, None, [], [], empty_state, None
     try:
         downloaded_path = None
         download_tmp = None
         audio_input = audio_path
         if url:
+            print(f"DEBUG: Downloading from URL: {url}", file=sys.stderr)
             downloaded_path, download_tmp = download_audio_from_url(url)
             audio_input = str(downloaded_path)
+            print(f"DEBUG: Downloaded to: {audio_input}, tmp={download_tmp}", file=sys.stderr)
 
+        print(f"DEBUG: Getting engine...", file=sys.stderr)
         engine = _get_engine(_token_key(hf_token), device)
+        print(f"DEBUG: Running diarization on: {audio_input}", file=sys.stderr)
         diarization, prepared_path, prep_tmpdir = engine.diarize(
             audio_input, show_progress=False, keep_audio=True
         )
+        print(f"DEBUG: Diarization done. prepared_path={prepared_path}, prep_tmpdir={prep_tmpdir}", file=sys.stderr)
         segments = engine.to_segments(diarization)
         dict_segments = [
             {"start": float(seg.start), "end": float(seg.end), "speaker": seg.speaker}
@@ -119,8 +127,11 @@ def _diarize_action(
             audio_file_output,
         )
     except Exception as exc:  # pragma: no cover - hiển thị lỗi cho người dùng giao diện
+        import traceback
+        print(f"DEBUG ERROR: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         empty_state = ["", "", "", ""]
-        return f"Lỗi: {exc}", None, None, [], [], empty_state, ""
+        return f"Lỗi: {exc}", None, None, [], [], empty_state, None
 
 
 def _normalize_label(value: Any) -> str:
