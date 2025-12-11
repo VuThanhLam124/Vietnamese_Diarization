@@ -24,7 +24,7 @@ class DiarizationEngine:
 
     def __init__(
         self,
-        model_id: str = "pyannote/speaker-diarization",
+        model_id: str = "pyannote/speaker-diarization-3.1",
         token: str | None = None,
         key_path: str | Path = "hugging_face_key.txt",
         device: str = "auto",
@@ -35,8 +35,16 @@ class DiarizationEngine:
         self.device = self._resolve_device(device)
         auth_token = read_hf_token(token, key_path)
         
-        # Load pipeline - pyannote/speaker-diarization (latest) works without deprecated params
+        # Load pipeline with authentication
+        print(f"DEBUG: Loading model {model_id} with token={'***' if auth_token else 'None'}", file=sys.stderr)
         pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
+        
+        if pipeline is None:
+            raise RuntimeError(
+                f"Failed to load pipeline '{model_id}'. "
+                f"The model might be gated - visit https://hf.co/{model_id} to accept terms. "
+                f"Make sure you've added HF_TOKEN to Space secrets or provided valid token."
+            )
         
         params = pipeline.parameters()
         # Giảm phân mảnh: chỉ cập nhật các khóa thực sự tồn tại để tránh lỗi.

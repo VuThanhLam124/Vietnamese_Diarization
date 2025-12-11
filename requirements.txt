@@ -1,4 +1,4 @@
-pyannote.audio==3.0.1
+pyannote.audio==3.3.2
 torch==2.1.2
 torchaudio==2.1.2
 gradio==4.19.2
