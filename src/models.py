@@ -64,12 +64,13 @@ class DiarizationEngine:
         if "clustering" in params and clustering_params:
             params["clustering"].update(clustering_params)
         
-        # Instantiate pipeline with parameters
+        # Instantiate pipeline with parameters (modifies in-place and returns self)
         print(f"DEBUG: Instantiating pipeline...", file=sys.stderr)
-        instantiated = pipeline.instantiate(params) if params else pipeline
-        print(f"DEBUG: Pipeline instantiated: {type(instantiated)}", file=sys.stderr)
+        pipeline.instantiate(params)
+        print(f"DEBUG: Pipeline instantiated successfully", file=sys.stderr)
         
-        self.pipeline = instantiated
+        # Store and move to device
+        self.pipeline = pipeline
         self.pipeline.to(self.device)
         print(f"DEBUG: Pipeline moved to device: {self.device}", file=sys.stderr)
 
