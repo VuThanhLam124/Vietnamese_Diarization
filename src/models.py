@@ -50,25 +50,7 @@ class DiarizationEngine:
                 f"After accepting, add HF_TOKEN to Space secrets with your token."
             )
         
-        # Get default parameters and customize if needed
-        try:
-            params = pipeline.default_parameters()
-        except NotImplementedError:
-            # If no default parameters, try to instantiate without params
-            params = {}
-        
-        print(f"DEBUG: Pipeline params: {params}", file=sys.stderr)
-        
-        # Update segmentation params if available
-        if "segmentation" in params and segmentation_params:
-            params["segmentation"].update(segmentation_params)
-        if "clustering" in params and clustering_params:
-            params["clustering"].update(clustering_params)
-        
-        # Instantiate pipeline with parameters (modifies in-place and returns self)
-        print(f"DEBUG: Instantiating pipeline...", file=sys.stderr)
-        pipeline.instantiate(params)
-        print(f"DEBUG: Pipeline instantiated successfully", file=sys.stderr)
+        print(f"DEBUG: Pipeline loaded successfully", file=sys.stderr)
         
         # Store and move to device
         self.pipeline = pipeline
