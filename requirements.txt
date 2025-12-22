@@ -6,3 +6,6 @@ huggingface_hub==0.20.3
 yt-dlp
 numpy<2.0
 PyYAML
+vn-speaker-profiling>=0.1.7
+transformers>=4.36.0
+librosa>=0.10.0

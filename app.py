@@ -18,6 +18,8 @@ from src.utils import (
     seconds_to_mmss,
     download_audio_from_url,
 )
+from src.asr import ASREngine
+from src.profiling import ProfilingEngine
 
 DEFAULT_TOKEN_SENTINEL = "__FROM_FILE_OR_ENV__"
 GENDER_MAP = {"nam": "0", "male": "0", "nữ": "1", "nu": "1", "female": "1"}
@@ -138,6 +140,22 @@ def _normalize_label(value: Any) -> str:
     return str(value).strip().lower() if value is not None else ""
 
 
+def _extract_label_from_auto(value: Any) -> str:
+    """Extract label từ format auto-label có confidence, ví dụ: 'Nam (85%)' -> 'nam'."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    
+    # Nếu có dạng "Label (XX%)" hoặc "Label (XX%)⚠️", lấy phần trước dấu (
+    if "(" in text:
+        text = text.split("(")[0].strip()
+    
+    # Remove emoji nếu có
+    text = text.replace("⚠️", "").strip()
+    
+    return text.lower()
+
+
 def _table_to_rows(table_data: Any) -> list[list[Any]]:
     """Chuyển giá trị DataFrame/ndarray/list sang list of list để thao tác."""
     if table_data is None:
@@ -187,6 +205,115 @@ def _apply_dropdown_action(
     new_rows[selected_idx][4] = region_val
     new_rows[selected_idx][5] = transcription_text
     return new_rows, f"Đã áp dụng cho hàng {selected_idx + 1}."
+
+
+def _auto_label_action(
+    table_rows: list[list[Any]] | None,
+    segments_state: list[dict],
+    audio_state: list[str],
+    asr_model: str,
+    confidence_threshold: float,
+):
+    """Auto-label segments với ASR transcription và speaker profiling."""
+    import sys
+    
+    if not segments_state:
+        return table_rows or [], "Chạy diarization trước."
+    if not audio_state or len(audio_state) < 1 or not audio_state[0]:
+        return table_rows or [], "Thiếu thông tin file audio."
+    
+    prepared_path = Path(audio_state[0])
+    if not prepared_path.exists():
+        return table_rows or [], f"Không tìm thấy file audio: {prepared_path}"
+    
+    rows = _table_to_rows(table_rows)
+    if len(rows) != len(segments_state):
+        rows = [[]] * len(segments_state)
+    
+    print(f"DEBUG: Auto-labeling {len(segments_state)} segments...", file=sys.stderr)
+    print(f"DEBUG: ASR model={asr_model}, threshold={confidence_threshold}", file=sys.stderr)
+    
+    try:
+        # Initialize engines
+        asr_engine = ASREngine(model_id=asr_model, device="auto")
+        profiler = ProfilingEngine(device="auto")
+        
+        # Process segments
+        tmpdir = Path(tempfile.mkdtemp(prefix="auto_label_"))
+        new_rows = []
+        low_confidence_count = 0
+        
+        for idx, seg in enumerate(segments_state):
+            start = float(seg["start"])
+            end = float(seg["end"])
+            speaker = seg.get("speaker", "")
+            
+            # Get existing row data
+            old_row = rows[idx] if idx < len(rows) else []
+            start_mmss = old_row[0] if len(old_row) > 0 else seconds_to_mmss(start)
+            end_mmss = old_row[1] if len(old_row) > 1 else seconds_to_mmss(end)
+            
+            try:
+                # ASR transcription
+                transcription = asr_engine.transcribe_segment(
+                    prepared_path, start, end, tmpdir=tmpdir
+                )
+                
+                # Speaker profiling
+                profile = profiler.profile_segment(
+                    prepared_path, start, end, tmpdir=tmpdir
+                )
+                
+                # Format với confidence indicators
+                gender_str = profile.gender
+                dialect_str = profile.dialect
+                gender_conf = profile.gender_confidence
+                dialect_conf = profile.dialect_confidence
+                
+                # Add confidence % và marker nếu thấp
+                if gender_conf < confidence_threshold:
+                    gender_str = f"{profile.gender} ({gender_conf:.0%})⚠️"
+                    low_confidence_count += 1
+                else:
+                    gender_str = f"{profile.gender} ({gender_conf:.0%})"
+                
+                if dialect_conf < confidence_threshold:
+                    dialect_str = f"{profile.dialect} ({dialect_conf:.0%})⚠️"
+                    low_confidence_count += 1
+                else:
+                    dialect_str = f"{profile.dialect} ({dialect_conf:.0%})"
+                
+                new_rows.append([
+                    start_mmss,
+                    end_mmss,
+                    speaker,
+                    gender_str,
+                    dialect_str,
+                    transcription,
+                ])
+                
+            except Exception as e:
+                print(f"DEBUG: Error processing segment {idx}: {e}", file=sys.stderr)
+                new_rows.append([
+                    start_mmss,
+                    end_mmss,
+                    speaker,
+                    "Error",
+                    "Error",
+                    f"[Lỗi: {str(e)[:50]}]",
+                ])
+        
+        status = f"Auto-label hoàn tất {len(segments_state)} đoạn."
+        if low_confidence_count > 0:
+            status += f" ⚠️ {low_confidence_count} nhãn có confidence thấp (< {confidence_threshold:.0%}) cần review."
+        
+        return new_rows, status
+        
+    except Exception as e:
+        import traceback
+        print(f"DEBUG: Auto-label error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return rows, f"Lỗi auto-label: {e}"
 
 
 def _import_archives_action(files: list[Any] | None, output_root: str = "outputs"):
@@ -286,8 +413,9 @@ def _split_segments_action(
             for idx, seg in enumerate(segments_state):
                 row = rows[idx] if idx < len(rows) else []
                 # row order: start_mmss, end_mmss, speaker, gender, region, transcription
-                gender = _normalize_label(row[3] if len(row) > 3 else "")
-                region = _normalize_label(row[4] if len(row) > 4 else "")
+                # Sử dụng _extract_label_from_auto để xử lý format "Nam (85%)" -> "nam"
+                gender = _extract_label_from_auto(row[3] if len(row) > 3 else "")
+                region = _extract_label_from_auto(row[4] if len(row) > 4 else "")
                 transcription = row[5] if len(row) > 5 else ""
 
                 if gender and gender not in ALLOWED_GENDER:
@@ -416,6 +544,36 @@ def build_interface() -> gr.Blocks:
         region_dropdown = gr.Dropdown(choices=["", "bắc", "trung", "nam"], value="", label="Vùng miền chọn nhanh")
         transcription_input = gr.Textbox(label="Transcription (áp dụng nhanh)", lines=1, placeholder="Nhập lời thoại")
         selection_info = gr.Textbox(label="Hàng đang chọn", interactive=False, value="Chưa chọn hàng")
+        
+        gr.Markdown(
+            """
+#### Auto Label (ASR + Gender + Dialect)
+- Chọn model ASR và ngưỡng confidence, nhấn "Auto Label" để tự động nhận diện.
+- Ô có ⚠️ nghĩa là confidence thấp, cần review thủ công.
+"""
+        )
+        with gr.Row():
+            asr_model_dropdown = gr.Dropdown(
+                choices=[
+                    "vinai/PhoWhisper-tiny",
+                    "vinai/PhoWhisper-base",
+                    "vinai/PhoWhisper-small",
+                    "vinai/PhoWhisper-medium",
+                    "vinai/PhoWhisper-large",
+                ],
+                value="vinai/PhoWhisper-base",
+                label="ASR Model",
+            )
+            confidence_slider = gr.Slider(
+                minimum=0.5,
+                maximum=1.0,
+                value=0.8,
+                step=0.05,
+                label="Ngưỡng confidence (⚠️ nếu thấp hơn)",
+            )
+        auto_label_btn = gr.Button("Auto Label (ASR + Gender + Dialect)", variant="primary")
+        auto_label_status = gr.Textbox(label="Trạng thái Auto Label", lines=2)
+        
         split_btn = gr.Button("Tách và tải")
         split_status = gr.Textbox(label="Trạng thái tách", lines=2)
         split_zip_file = gr.File(label="Tải ZIP các đoạn đã tách")
@@ -462,6 +620,11 @@ def build_interface() -> gr.Blocks:
             inputs=[segment_df, selected_row, gender_dropdown, region_dropdown, transcription_input],
             outputs=[segment_df, selection_info],
         )
+        auto_label_btn.click(
+            fn=_auto_label_action,
+            inputs=[segment_df, segments_state, audio_state, asr_model_dropdown, confidence_slider],
+            outputs=[segment_df, auto_label_status],
+        )
         split_btn.click(
             fn=_split_segments_action,
             inputs=[segment_df, segments_state, audio_state],
@@ -477,15 +640,30 @@ def build_interface() -> gr.Blocks:
 
 if __name__ == "__main__":
     import sys
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Vietnamese Diarization Gradio App")
+    parser.add_argument("--share", action="store_true", 
+                        help="Create public URL (useful for Kaggle/Colab)")
+    parser.add_argument("--port", type=int, default=7860, 
+                        help="Server port (default: 7860)")
+    parser.add_argument("--host", type=str, default="0.0.0.0",
+                        help="Server host (default: 0.0.0.0)")
+    args = parser.parse_args()
+    
     print("=" * 60, file=sys.stderr)
     print("Khởi tạo Vietnamese Diarization App...", file=sys.stderr)
+    if args.share:
+        print("🌐 Public URL sẽ được tạo (share=True)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
+    
     try:
         demo = build_interface()
         print("Interface đã được khởi tạo thành công!", file=sys.stderr)
         demo.launch(
-            server_name="0.0.0.0",
-            server_port=7860,
+            server_name=args.host,
+            server_port=args.port,
+            share=args.share,
         )
     except Exception as e:
         print(f"LỖI khi khởi động app: {e}", file=sys.stderr)
