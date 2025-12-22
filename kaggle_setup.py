@@ -1,4 +1,4 @@
-"""
+ht"""
 Kaggle Setup Script for Vietnamese Diarization
 
 Usage on Kaggle:

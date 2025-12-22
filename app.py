@@ -27,6 +27,14 @@ REGION_MAP = {"bắc": "0", "bac": "0", "north": "0", "trung": "1", "central": "
 ALLOWED_GENDER = {"nam", "nữ", "nu", "male", "female"}
 ALLOWED_REGION = {"bắc", "trung", "nam", "bac", "north", "central", "south"}
 
+import torch
+
+# Workaround cho PyTorch 2.6 - force weights_only=False
+_original_load = torch.load
+def _patched_load(*args, **kwargs):
+    kwargs.setdefault('weights_only', False)
+    return _original_load(*args, **kwargs)
+torch.load = _patched_load
 
 def diarize_file(
     audio_path: str | Path,
