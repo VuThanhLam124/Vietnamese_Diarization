@@ -93,7 +93,7 @@ def main():
     print("    !python app.py --share")
     print("")
     print("  Option 2 - Run inference directly:")
-    print("    !python infer.py your_audio.wav --json output.json")
+    print("    !python cli_infer.py your_audio.wav --json output.json")
     print("=" * 60)
 
 if __name__ == "__main__":

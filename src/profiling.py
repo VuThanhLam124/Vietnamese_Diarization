@@ -34,19 +34,47 @@ DIALECT_LABELS = {0: "Bắc", 1: "Trung", 2: "Nam"}
 
 
 def _import_speaker_profiler():
-    """Import SpeakerProfiler từ vn-speaker-profiling package."""
-    try:
-        from infer import SpeakerProfiler
-        return SpeakerProfiler
-    except ImportError:
-        # Fallback: thêm site-packages path nếu package installed ở đó
-        import site
-        import sys
-        for sp in site.getsitepackages():
-            if sp not in sys.path:
+    """Import SpeakerProfiler từ vn-speaker-profiling package bằng absolute path."""
+    import importlib.util
+    import site
+    import sys
+    import os
+    
+    # Tìm infer.py trong site-packages
+    for sp in site.getsitepackages():
+        infer_path = Path(sp) / "infer.py"
+        if infer_path.exists():
+            # Lưu trạng thái
+            old_path = sys.path.copy()
+            old_modules = dict(sys.modules)
+            old_cwd = os.getcwd()
+            
+            try:
+                # Xóa tất cả path có thể conflict với local src/
+                cwd = os.getcwd()
+                sys.path = [p for p in sys.path 
+                           if not (p == '' or p == cwd or 'Vietnamese_Diarization' in p)]
                 sys.path.insert(0, sp)
-        from infer import SpeakerProfiler
-        return SpeakerProfiler
+                
+                # Xóa cached modules có thể conflict
+                for mod_name in list(sys.modules.keys()):
+                    if mod_name.startswith('src.') or mod_name == 'src':
+                        del sys.modules[mod_name]
+                
+                # Chuyển cwd để tránh relative import conflict
+                os.chdir(sp)
+                
+                # Load module
+                spec = importlib.util.spec_from_file_location("vn_profiling_infer", infer_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                return module.SpeakerProfiler
+            finally:
+                os.chdir(old_cwd)
+                sys.path = old_path
+                # Restore only essential modules, không restore src.* để tránh conflict
+    
+    raise ImportError("Không tìm thấy vn-speaker-profiling package. Cài đặt: pip install vn-speaker-profiling")
 
 
 @functools.lru_cache(maxsize=2)

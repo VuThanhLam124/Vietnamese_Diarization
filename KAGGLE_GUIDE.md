@@ -86,7 +86,7 @@ audio_file = "sample.mp3"
 ### Chạy Diarization
 
 ```python
-!python infer.py {audio_file} --json output.json --rttm output.rttm
+!python cli_infer.py {audio_file} --json output.json --rttm output.rttm
 ```
 
 ### Chạy với Auto-Label (ASR + Profiling)

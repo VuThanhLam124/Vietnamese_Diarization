@@ -30,9 +30,9 @@ Kho mã mẫu diarization tiếng Việt dùng pyannote/speaker-diarization-comm
 - Bảng kết quả hiển thị dạng phút:giây; có thể gán nhãn giới tính (nam/nữ), vùng miền (bắc/trung/nam) và transcription, sau đó bấm "Tách và tải" để nhận zip gồm các đoạn WAV và metadata.csv
 
 ## Chạy mẫu
-- Diarization và in kết quả: `python infer.py path/to/audio.wav`
-- Lưu thêm RTTM: `python infer.py path/to/audio.wav --rttm outputs/audio.rttm`
-- Lưu JSON: `python infer.py path/to/audio.wav --json outputs/audio.json`
+- Diarization và in kết quả: `python cli_infer.py path/to/audio.wav`
+- Lưu thêm RTTM: `python cli_infer.py path/to/audio.wav --rttm outputs/audio.rttm`
+- Lưu JSON: `python cli_infer.py path/to/audio.wav --json outputs/audio.json`
 - Chọn thiết bị: thêm `--device cpu` hoặc `--device cuda` (mặc định auto)
 
 ## API Python
@@ -43,7 +43,7 @@ segments = diarize_file("audio.wav", device="auto")
 
 ## Cấu trúc
 - app.py: API Python và giao diện Gradio
-- infer.py: CLI chạy diarization
+- cli_infer.py: CLI chạy diarization
 - src/models.py: Bao gói pipeline pyannote
 - src/utils.py: Hỗ trợ đọc token, định dạng kết quả
 - hugging_face_key.txt: nơi dán Hugging Face access token (không commit token thật)
