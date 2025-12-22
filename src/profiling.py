@@ -29,7 +29,7 @@ class ProfileResult:
 
 
 # Label mappings
-GENDER_LABELS = {0: "Nam", 1: "Nữ"}
+GENDER_LABELS = {0: "Nữ", 1: "Nam"}
 DIALECT_LABELS = {0: "Bắc", 1: "Trung", 2: "Nam"}
 
 
