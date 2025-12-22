@@ -38,7 +38,7 @@ class DiarizationEngine:
         
         # Load pipeline with authentication
         print(f"DEBUG: Loading model {model_id} with token={'***' if auth_token else 'None'}", file=sys.stderr)
-        pipeline = Pipeline.from_pretrained(model_id, use_auth_token=auth_token)
+        pipeline = Pipeline.from_pretrained(model_id, token=auth_token)
         
         if pipeline is None:
             raise RuntimeError(
