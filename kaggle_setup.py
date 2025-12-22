@@ -75,8 +75,16 @@ def main():
     try:
         from infer import SpeakerProfiler
         print("✓ SpeakerProfiler ready")
-    except Exception as e:
-        print(f"⚠ SpeakerProfiler import error: {e}")
+    except ImportError:
+        try:
+            import site
+            for sp in site.getsitepackages():
+                if sp not in sys.path:
+                    sys.path.insert(0, sp)
+            from infer import SpeakerProfiler
+            print("✓ SpeakerProfiler ready (via site-packages)")
+        except Exception as e:
+            print(f"⚠ SpeakerProfiler import error: {e}")
     
     print("\n[4/4] Setup Complete!")
     print("=" * 60)

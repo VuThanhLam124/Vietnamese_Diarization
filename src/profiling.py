@@ -33,10 +33,26 @@ GENDER_LABELS = {0: "Nam", 1: "Nữ"}
 DIALECT_LABELS = {0: "Bắc", 1: "Trung", 2: "Nam"}
 
 
+def _import_speaker_profiler():
+    """Import SpeakerProfiler từ vn-speaker-profiling package."""
+    try:
+        from infer import SpeakerProfiler
+        return SpeakerProfiler
+    except ImportError:
+        # Fallback: thêm site-packages path nếu package installed ở đó
+        import site
+        import sys
+        for sp in site.getsitepackages():
+            if sp not in sys.path:
+                sys.path.insert(0, sp)
+        from infer import SpeakerProfiler
+        return SpeakerProfiler
+
+
 @functools.lru_cache(maxsize=2)
 def _get_profiler(checkpoint: str, encoder: str, device: str):
     """Cache profiler để tránh reload model."""
-    from infer import SpeakerProfiler
+    SpeakerProfiler = _import_speaker_profiler()
     
     torch_device = device
     if device == "auto":
