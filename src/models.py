@@ -11,6 +11,7 @@ from pyannote.audio.pipelines.utils.hook import ProgressHook
 
 from .utils import ensure_audio_path, read_hf_token, convert_to_wav_16k
 
+torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
 
 @dataclass
 class Segment:
