@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import warnings
+# Suppress pyannote TF32 warning và transformers FutureWarning
+warnings.filterwarnings("ignore", message="TensorFloat-32")
+warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
+
 import functools
 import tempfile
 from pathlib import Path
@@ -35,6 +40,7 @@ def _patched_load(*args, **kwargs):
     kwargs.setdefault('weights_only', False)
     return _original_load(*args, **kwargs)
 torch.load = _patched_load
+
 
 def diarize_file(
     audio_path: str | Path,
