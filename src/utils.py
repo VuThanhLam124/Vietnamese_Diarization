@@ -71,12 +71,20 @@ def format_segments_table(segments: Iterable[dict]) -> str:
 
 def merge_adjacent_segments(
     segments: list[dict],
-    max_gap: float = 0.5,
-    min_duration: float = 1.0,
+    max_gap: float = 2.0,
+    min_duration: float = 0.5,
 ) -> list[dict]:
     """
     Ghép các đoạn liên tiếp cùng speaker nếu khoảng trống <= max_gap (giây).
     Đồng thời lọc bỏ đoạn quá ngắn (< min_duration).
+    
+    Args:
+        segments: List segments cần merge
+        max_gap: Khoảng trống tối đa giữa 2 đoạn để merge (default: 2.0s)
+        min_duration: Thời lượng tối thiểu của segment sau merge (default: 0.5s)
+    
+    Returns:
+        List segments đã được merge
     """
     if not segments:
         return []

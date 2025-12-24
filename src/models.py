@@ -117,7 +117,23 @@ class DiarizationEngine:
             annotation.write_rttm(f)
         return path
 
-    def run(self, audio_path: str | Path, show_progress: bool = True) -> List[Segment]:
-        """Chạy pipeline và trả về danh sách segment."""
+    def run(self, audio_path: str | Path, show_progress: bool = True, merge_gap: float = 2.0) -> List[Segment]:
+        """Chạy pipeline và trả về danh sách segment.
+        
+        Args:
+            audio_path: Đường dẫn file audio
+            show_progress: Hiển thị progress bar
+            merge_gap: Khoảng trống tối đa để merge segments cùng speaker (giây)
+        """
+        from .utils import merge_adjacent_segments
+        
         diarization = self.diarize(audio_path, show_progress=show_progress)
-        return self.to_segments(diarization)
+        segments = self.to_segments(diarization)
+        
+        # Merge segments cùng speaker nếu gần nhau
+        if merge_gap > 0:
+            dict_segments = [{'start': s.start, 'end': s.end, 'speaker': s.speaker} for s in segments]
+            merged = merge_adjacent_segments(dict_segments, max_gap=merge_gap, min_duration=0.5)
+            segments = [Segment(start=s['start'], end=s['end'], speaker=s['speaker']) for s in merged]
+        
+        return segments

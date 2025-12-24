@@ -69,6 +69,7 @@ def _diarize_action(
     hf_token: str | None,
     device: str,
     url: str | None = None,
+    merge_gap: float = 5.0,
 ):
     import sys
     print(f"DEBUG START: audio_path={audio_path}, url={url}", file=sys.stderr)
@@ -88,12 +89,18 @@ def _diarize_action(
 
         print(f"DEBUG: Getting engine...", file=sys.stderr)
         engine = _get_engine(_token_key(hf_token), device)
-        print(f"DEBUG: Running diarization on: {audio_input}", file=sys.stderr)
+        print(f"DEBUG: Running diarization on: {audio_input}, merge_gap={merge_gap}s", file=sys.stderr)
         diarization, prepared_path, prep_tmpdir = engine.diarize(
             audio_input, show_progress=False, keep_audio=True
         )
         print(f"DEBUG: Diarization done. prepared_path={prepared_path}, prep_tmpdir={prep_tmpdir}", file=sys.stderr)
-        segments = engine.to_segments(diarization)
+        raw_segments = engine.to_segments(diarization)
+        
+        # Merge segments cùng speaker
+        from src.utils import merge_adjacent_segments
+        dict_segments = [{'start': s.start, 'end': s.end, 'speaker': s.speaker} for s in raw_segments]
+        merged = merge_adjacent_segments(dict_segments, max_gap=merge_gap, min_duration=0.5)
+        segments = [Segment(start=s['start'], end=s['end'], speaker=s['speaker']) for s in merged]
         dict_segments = [
             {"start": float(seg.start), "end": float(seg.end), "speaker": seg.speaker}
             for seg in segments
@@ -538,6 +545,14 @@ def build_interface() -> gr.Blocks:
                     value="auto",
                     label="Thiết bị",
                 )
+                merge_gap_slider = gr.Slider(
+                    minimum=0.5,
+                    maximum=5.0,
+                    value=2.0,
+                    step=0.5,
+                    label="Merge Gap (giây) - khoảng trống tối đa để gộp đoạn cùng speaker",
+                    info="Tăng giá trị để gộp nhiều đoạn nhỏ thành đoạn dài hơn. Khuyến nghị: 2-3s",
+                )
                 run_btn = gr.Button("Chạy diarization")
 
         gr.Markdown(
@@ -611,7 +626,7 @@ def build_interface() -> gr.Blocks:
 
         run_btn.click(
             fn=_diarize_action,
-            inputs=[audio_input, token_input, device_input, url_input],
+            inputs=[audio_input, token_input, device_input, url_input, merge_gap_slider],
             outputs=[result_box, rttm_file, json_file, segment_df, segments_state, audio_state, playback],
         )
         segment_df.select(
