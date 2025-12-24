@@ -96,10 +96,16 @@ def _diarize_action(
         print(f"DEBUG: Diarization done. prepared_path={prepared_path}, prep_tmpdir={prep_tmpdir}", file=sys.stderr)
         raw_segments = engine.to_segments(diarization)
         
-        # Merge segments cùng speaker
-        from src.utils import merge_adjacent_segments
+        # Merge segments cùng speaker - import local utils
+        import importlib.util
+        import os
+        utils_path = os.path.join(os.path.dirname(__file__), 'src', 'utils.py')
+        spec = importlib.util.spec_from_file_location("local_utils", utils_path)
+        local_utils = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(local_utils)
+        
         dict_segments = [{'start': s.start, 'end': s.end, 'speaker': s.speaker} for s in raw_segments]
-        merged = merge_adjacent_segments(dict_segments, max_gap=merge_gap, min_duration=0.5)
+        merged = local_utils.merge_adjacent_segments(dict_segments, max_gap=merge_gap, min_duration=0.5)
         segments = [Segment(start=s['start'], end=s['end'], speaker=s['speaker']) for s in merged]
         dict_segments = [
             {"start": float(seg.start), "end": float(seg.end), "speaker": seg.speaker}
