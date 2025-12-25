@@ -59,9 +59,35 @@ def _token_key(raw_token: str | None) -> str:
 
 
 @functools.lru_cache(maxsize=2)
-def _get_engine(token_key: str, device: str) -> DiarizationEngine:
+def _get_engine(
+    token_key: str,
+    device: str,
+    seg_min_duration_off: float | None = None,
+    clust_threshold: float | None = None,
+    clust_method: str | None = None,
+    clust_min_cluster_size: int | None = None,
+) -> DiarizationEngine:
     token_value = None if token_key == DEFAULT_TOKEN_SENTINEL else token_key
-    return DiarizationEngine(token=token_value, device=device)
+    
+    # Build hyperparameters
+    segmentation_params = {}
+    if seg_min_duration_off is not None:
+        segmentation_params["min_duration_off"] = seg_min_duration_off
+    
+    clustering_params = {}
+    if clust_threshold is not None:
+        clustering_params["threshold"] = clust_threshold
+    if clust_method is not None:
+        clustering_params["method"] = clust_method
+    if clust_min_cluster_size is not None:
+        clustering_params["min_cluster_size"] = clust_min_cluster_size
+    
+    return DiarizationEngine(
+        token=token_value,
+        device=device,
+        segmentation_params=segmentation_params if segmentation_params else None,
+        clustering_params=clustering_params if clustering_params else None,
+    )
 
 
 def _diarize_action(
@@ -70,6 +96,10 @@ def _diarize_action(
     device: str,
     url: str | None = None,
     merge_gap: float = 5.0,
+    seg_min_duration_off: float | None = None,
+    clust_threshold: float | None = None,
+    clust_method: str | None = None,
+    clust_min_cluster_size: int | None = None,
 ):
     import sys
     print(f"DEBUG START: audio_path={audio_path}, url={url}", file=sys.stderr)
@@ -88,7 +118,15 @@ def _diarize_action(
             print(f"DEBUG: Downloaded to: {audio_input}, tmp={download_tmp}", file=sys.stderr)
 
         print(f"DEBUG: Getting engine...", file=sys.stderr)
-        engine = _get_engine(_token_key(hf_token), device)
+        # Convert 0 or empty to None (use default)
+        engine = _get_engine(
+            _token_key(hf_token),
+            device,
+            seg_min_duration_off if seg_min_duration_off else None,
+            clust_threshold if clust_threshold else None,
+            clust_method if clust_method else None,
+            int(clust_min_cluster_size) if clust_min_cluster_size else None,
+        )
         print(f"DEBUG: Running diarization on: {audio_input}, merge_gap={merge_gap}s", file=sys.stderr)
         diarization, prepared_path, prep_tmpdir = engine.diarize(
             audio_input, show_progress=False, keep_audio=True
@@ -559,7 +597,51 @@ def build_interface() -> gr.Blocks:
                     label="Merge Gap (giây) - khoảng trống tối đa để gộp đoạn cùng speaker",
                     info="Tăng giá trị để gộp nhiều đoạn nhỏ thành đoạn dài hơn. Khuyến nghị: 2-3s",
                 )
-                run_btn = gr.Button("Chạy diarization")
+                
+        # Pipeline hyperparameters trong Accordion
+        with gr.Accordion("⚙️ Tuning Hyperparameters (Nâng cao)", open=False):
+            gr.Markdown(
+                """
+**Điều chỉnh hyperparameters của pipeline diarization:**
+- Giảm `Clustering Threshold` → Nhiều speaker hơn (dễ tách nhầm)
+- Tăng `Clustering Threshold` → Ít speaker hơn (dễ gộp nhầm)
+- Giảm `Min Duration Off` → Nhạy hơn với khoảng dừng ngắn
+"""
+            )
+            with gr.Row():
+                seg_min_duration_off_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=2.0,
+                    value=0.0,
+                    step=0.1,
+                    label="Min Duration Off (giây)",
+                    info="0 = dùng mặc định. Thời gian im lặng tối thiểu giữa các speech segments",
+                )
+                clust_threshold_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.0,
+                    step=0.05,
+                    label="Clustering Threshold",
+                    info="0 = dùng mặc định (~0.7). Ngưỡng khoảng cách để gom speaker",
+                )
+            with gr.Row():
+                clust_method_dropdown = gr.Dropdown(
+                    choices=["", "centroid", "average", "ward", "complete", "single"],
+                    value="",
+                    label="Clustering Method",
+                    info="Để trống = mặc định (centroid)",
+                )
+                clust_min_cluster_size_slider = gr.Slider(
+                    minimum=0,
+                    maximum=50,
+                    value=0,
+                    step=5,
+                    label="Min Cluster Size",
+                    info="0 = dùng mặc định (~15). Số segment tối thiểu tạo speaker cluster",
+                )
+        
+        run_btn = gr.Button("Chạy diarization", variant="primary")
 
         gr.Markdown(
             """
@@ -632,7 +714,11 @@ def build_interface() -> gr.Blocks:
 
         run_btn.click(
             fn=_diarize_action,
-            inputs=[audio_input, token_input, device_input, url_input, merge_gap_slider],
+            inputs=[
+                audio_input, token_input, device_input, url_input, merge_gap_slider,
+                seg_min_duration_off_slider, clust_threshold_slider,
+                clust_method_dropdown, clust_min_cluster_size_slider,
+            ],
             outputs=[result_box, rttm_file, json_file, segment_df, segments_state, audio_state, playback],
         )
         segment_df.select(

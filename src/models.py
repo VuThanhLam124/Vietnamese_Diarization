@@ -21,7 +21,32 @@ class Segment:
 
 
 class DiarizationEngine:
-    """Bao gói pipeline diarization của pyannote."""
+    """Bao gói pipeline diarization của pyannote.
+    Pipeline pyannote/speaker-diarization-3.1 có các hyperparameters sau:
+    
+    1. SEGMENTATION PARAMETERS (segmentation_params):
+       - min_duration_off (float): Thời gian tối thiểu (giây) của khoảng im lặng 
+         giữa các speech segments.
+         + Giá trị nhỏ hơn → nhạy hơn với khoảng dừng ngắn
+         + Giá trị lớn hơn → bỏ qua các khoảng dừng ngắn
+         + Mặc định: ~0.5s
+    
+    2. CLUSTERING PARAMETERS (clustering_params):
+       - threshold (float): Ngưỡng khoảng cách để quyết định 2 embeddings 
+         có thuộc cùng speaker hay không.
+         + Giá trị nhỏ hơn → nhiều speaker hơn (dễ tách nhầm)
+         + Giá trị lớn hơn → ít speaker hơn (dễ gộp nhầm)
+         + Mặc định: ~0.7
+       
+       - method (str): Phương pháp clustering
+         + "centroid", "average", "ward", "complete", "single"
+         + Mặc định: "centroid"
+       
+       - min_cluster_size (int): Số segment tối thiểu để tạo thành 1 speaker cluster
+         + Giá trị lớn hơn → loại bỏ speaker xuất hiện ít
+         + Mặc định: 15
+
+    """
 
     def __init__(
         self,
@@ -51,6 +76,17 @@ class DiarizationEngine:
             )
         
         print(f"DEBUG: Pipeline loaded successfully", file=sys.stderr)
+        
+        # Apply hyperparameters if provided
+        hyperparams = {}
+        if segmentation_params:
+            hyperparams["segmentation"] = segmentation_params
+        if clustering_params:
+            hyperparams["clustering"] = clustering_params
+        
+        if hyperparams:
+            pipeline.instantiate(hyperparams)
+            print(f"DEBUG: Applied hyperparameters: {hyperparams}", file=sys.stderr)
         
         # Store and move to device
         self.pipeline = pipeline

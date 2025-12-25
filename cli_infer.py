@@ -40,12 +40,56 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Đường dẫn lưu kết quả dạng JSON (tùy chọn)",
     )
+    # Pipeline hyperparameters
+    parser.add_argument(
+        "--min-duration-off",
+        type=float,
+        default=None,
+        help="Segmentation: thời gian im lặng tối thiểu (giây). Nhỏ hơn = nhạy hơn với khoảng dừng ngắn",
+    )
+    parser.add_argument(
+        "--clustering-threshold",
+        type=float,
+        default=None,
+        help="Clustering: ngưỡng khoảng cách speaker (0-1). Nhỏ hơn = nhiều speaker hơn",
+    )
+    parser.add_argument(
+        "--clustering-method",
+        choices=["centroid", "average", "ward", "complete", "single"],
+        default=None,
+        help="Clustering: phương pháp gom nhóm",
+    )
+    parser.add_argument(
+        "--min-cluster-size",
+        type=int,
+        default=None,
+        help="Clustering: số segment tối thiểu để tạo speaker cluster",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    engine = DiarizationEngine(token=args.hf_token, device=args.device)
+    
+    # Build hyperparameters from CLI args
+    segmentation_params = {}
+    if args.min_duration_off is not None:
+        segmentation_params["min_duration_off"] = args.min_duration_off
+    
+    clustering_params = {}
+    if args.clustering_threshold is not None:
+        clustering_params["threshold"] = args.clustering_threshold
+    if args.clustering_method is not None:
+        clustering_params["method"] = args.clustering_method
+    if args.min_cluster_size is not None:
+        clustering_params["min_cluster_size"] = args.min_cluster_size
+    
+    engine = DiarizationEngine(
+        token=args.hf_token,
+        device=args.device,
+        segmentation_params=segmentation_params if segmentation_params else None,
+        clustering_params=clustering_params if clustering_params else None,
+    )
     diarization = engine.diarize(args.audio, show_progress=not args.no_progress)
     segments = engine.to_segments(diarization)
 
